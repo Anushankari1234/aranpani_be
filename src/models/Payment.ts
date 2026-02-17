@@ -24,11 +24,13 @@ export class Payment {
   })
   mode!: PaymentMode;
 
-  @Column({ nullable: true })
-  transactionId?: string;
+  @Column({ nullable: false })
+  transactionId!: string;
 
-  @Column('text', { nullable: true })
-  donationScript?: string;
+  @Column({ type: 'json', nullable: false })
+donationScript!: string[];
+
+
 
   @ManyToOne(() => Donor, donor => donor.payments)
   @JoinColumn({ name: 'donor_id', referencedColumnName: 'regNum' })
@@ -42,11 +44,14 @@ export class Payment {
   amount!: number;
 
   @Column({
-    type: 'enum',
-    enum: PaymentStatus
-  })
-  status!: PaymentStatus;
+  type: 'enum',
+  enum: PaymentStatus,
+  default: PaymentStatus.PAID
+})
+status!: PaymentStatus;
+
 
   @Column()
   monthYear!: string;
+
 }
