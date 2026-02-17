@@ -1,5 +1,5 @@
-import { findDonorByRegNum } from "../repositories/donorRepo";
-import { countMembersByDonorId } from "../repositories/groupMemberRepo";
+import { findDonorByRegNum } from "../repositories/donor.repo";
+import { countMembersByDonorId } from "../repositories/groupMember.repo";
 
 export const getMemberCountService = async (donorId: string) => {
 

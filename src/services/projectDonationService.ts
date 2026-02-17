@@ -1,14 +1,14 @@
 import {
   createProjectDonation,
   saveProjectDonation,
-} from "../repositories/projectDonationRepo";
+} from "../repositories/projectDonation.repo";
 import { findProjectByRegnum } from "../repositories/project.repo";
 import {
   findDonorByPhoneNum,
   createDonor,
   saveDonor,
   findLastDonor,
-} from "../repositories/donorRepo";
+} from "../repositories/donor.repo";
 import { CreateProjectDonationDTO } from "../validations/projectDonationSchema";
 import { UserType } from "../enums/userType";
 export const createProjectDonationService = async (

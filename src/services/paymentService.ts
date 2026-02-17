@@ -7,10 +7,13 @@ import {
   getPaymentsQueryBuilder,
   getPaymentSummaryQueryBuilder,
   getDonorPaymentsQueryBuilder,
-} from "../repositories/paymetRepo";
+} from "../repositories/payment.repo";
 import { CreatePaymentDTO } from "../validations/paymentSchema";
-import { findDonorByRegNum, getDonorOneTimeDonationsQueryBuilder } from "../repositories/donorRepo";
-import { findSubscriptionById } from "../repositories/subscriptionRepo";
+import {
+  findDonorByRegNum,
+  getDonorOneTimeDonationsQueryBuilder,
+} from "../repositories/donor.repo";
+import { findSubscriptionById } from "../repositories/subscription.repo";
 import { PaginationQuery } from "../shared/types/pagination.type";
 import { PaymentListResponse } from "../shared/types/paymentResponse.type";
 import { PaymentListItem } from "../shared/types/paymentItem.type";
@@ -189,25 +192,40 @@ export const getPaymentSummaryService = async (query: {
   };
 };
 
-
 export const getDonorPaymentsService = async (
   donorId: string,
   query: PaginationQuery,
 ): Promise<DonorPaymentResponse> => {
-
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
   const skip = (page - 1) * limit;
+
   const month = query.month ? Number(query.month) : null;
   const year = query.year ? Number(query.year) : null;
-  const sortOrder = query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+  const sortOrder: "ASC" | "DESC" =
+    query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+
+  const sortBy = query.sortBy || "date";
+
+  const allowedSortFields: Record<string, keyof DonorPaymentItem> = {
+    date: "date",
+    paymentMode: "paymentMode",
+    transactionId: "transactionId",
+    repName: "repName",
+    repRegisterNumber: "repRegisterNumber",
+    type: "type",
+  };
+
+  const sortField = allowedSortFields[sortBy as string] || "date";
 
   const paymentQB = getDonorPaymentsQueryBuilder();
   paymentQB.where("donor.regNum = :donorId", { donorId });
 
   if (month && year) {
-    paymentQB.andWhere("EXTRACT(MONTH FROM payment.paymentDate) = :month", { month })
-             .andWhere("EXTRACT(YEAR FROM payment.paymentDate) = :year", { year });
+    paymentQB
+      .andWhere("EXTRACT(MONTH FROM payment.paymentDate) = :month", { month })
+      .andWhere("EXTRACT(YEAR FROM payment.paymentDate) = :year", { year });
   }
 
   const subscriptionPayments = await paymentQB.getMany();
@@ -216,41 +234,64 @@ export const getDonorPaymentsService = async (
   donationQB.where("donor.regNum = :donorId", { donorId });
 
   if (month && year) {
-    donationQB.andWhere("EXTRACT(MONTH FROM donation.donationDate) = :month", { month })
-              .andWhere("EXTRACT(YEAR FROM donation.donationDate) = :year", { year });
+    donationQB
+      .andWhere("EXTRACT(MONTH FROM donation.donationDate) = :month", { month })
+      .andWhere("EXTRACT(YEAR FROM donation.donationDate) = :year", { year });
   }
 
   const oneTimeDonations = await donationQB.getMany();
 
-  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map(p => ({
-    date: p.paymentDate,
-    paymentMode: p.mode,
-    transactionId: p.transactionId ?? null,
-    repName: p.donor.rep?.name ?? null,
-    repRegisterNumber: p.donor.rep?.regNum ?? null,
-    type: "SUBSCRIPTION"
-  }));
+  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map(
+    (p) => ({
+      date: p.paymentDate,
+      paymentMode: p.mode,
+      transactionId: p.transactionId ?? null,
+      repName: p.donor.rep?.name ?? null,
+      repRegisterNumber: p.donor.rep?.regNum ?? null,
+      type: "SUBSCRIPTION",
+    }),
+  );
 
-  const oneTimeResults: DonorPaymentItem[] = oneTimeDonations.map(d => ({
+  const oneTimeResults: DonorPaymentItem[] = oneTimeDonations.map((d) => ({
     date: d.donationDate,
     paymentMode: d.paymentMode,
     transactionId: d.transactionId ?? null,
     repName: null,
     repRegisterNumber: null,
-    type: "ONE_TIME"
+    type: "ONE_TIME",
   }));
 
- 
-  const merged = [...subscriptionResults, ...oneTimeResults];
+  const merged: DonorPaymentItem[] = [
+    ...subscriptionResults,
+    ...oneTimeResults,
+  ];
 
- 
   merged.sort((a, b) => {
-    if (sortOrder === "ASC") {
-      return new Date(a.date).getTime() - new Date(b.date).getTime();
-    }
-    return new Date(b.date).getTime() - new Date(a.date).getTime();
-  });
+    const valueA = a[sortField];
+    const valueB = b[sortField];
 
+    if (valueA == null) return 1;
+    if (valueB == null) return -1;
+
+    if (sortField === "date") {
+      const timeA = new Date(valueA as Date).getTime();
+      const timeB = new Date(valueB as Date).getTime();
+
+      return sortOrder === "ASC" ? timeA - timeB : timeB - timeA;
+    }
+
+    const stringA = String(valueA).toLowerCase();
+    const stringB = String(valueB).toLowerCase();
+
+    if (stringA < stringB) {
+      return sortOrder === "ASC" ? -1 : 1;
+    }
+    if (stringA > stringB) {
+      return sortOrder === "ASC" ? 1 : -1;
+    }
+
+    return 0;
+  });
 
   const paginated = merged.slice(skip, skip + limit);
 
