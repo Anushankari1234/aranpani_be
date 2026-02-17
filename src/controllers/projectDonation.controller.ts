@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createProjectDonationSchema } from "../validations/projectDonationSchema";
-import { createProjectDonationService } from "../services/projectDonationService";
+import { createProjectDonationService } from "../services/projectDonation.service";
 
 const router = Router();
 

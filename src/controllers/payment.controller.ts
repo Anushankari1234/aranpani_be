@@ -1,5 +1,5 @@
 import { Request, Response, Router } from "express";
-import { createPaymentService, getDonorPaymentsService, getPaymentsService, getPaymentSummaryService } from "../services/paymentService";
+import { createPaymentService, getDonorPaymentsService, getPaymentsService, getPaymentSummaryService } from "../services/payment.service";
 import { ParsedQs } from "qs";
 
 const router = Router()
