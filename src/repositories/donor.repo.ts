@@ -22,3 +22,26 @@ export const getDonorOneTimeDonationsQueryBuilder = () => {
     .leftJoinAndSelect("donation.project", "project")
     .leftJoinAndSelect("donation.donor", "donor");
 };
+
+interface GetDonorOneTimeDonationsParams {
+  donorId: string;
+  month?: number | null;
+  year?: number | null;
+}
+
+export const getDonorOneTimeDonations = async ({
+  donorId,
+  month,
+  year,
+}: GetDonorOneTimeDonationsParams) => {
+  const qb = getDonorOneTimeDonationsQueryBuilder();
+
+  qb.where("donor.regNum = :donorId", { donorId });
+
+  if (month && year) {
+    qb.andWhere("EXTRACT(MONTH FROM donation.donationDate) = :month", { month })
+      .andWhere("EXTRACT(YEAR FROM donation.donationDate) = :year", { year });
+  }
+
+  return qb.getMany();
+};

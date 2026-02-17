@@ -7,10 +7,14 @@ import {
   getPaymentsQueryBuilder,
   getPaymentSummaryQueryBuilder,
   getDonorPaymentsQueryBuilder,
+  getPaymentsWithFilters,
+  getPaymentSummary,
+  getDonorSubscriptionPayments,
 } from "../repositories/payment.repo";
 import { CreatePaymentDTO } from "../validations/paymentSchema";
 import {
   findDonorByRegNum,
+  getDonorOneTimeDonations,
   getDonorOneTimeDonationsQueryBuilder,
 } from "../repositories/donor.repo";
 import { findSubscriptionById } from "../repositories/subscription.repo";
@@ -57,47 +61,27 @@ export const createPaymentService = async (body: CreatePaymentDTO) => {
 };
 
 export const getPaymentsService = async (
-  query: PaginationQuery,
+  query: PaginationQuery
 ): Promise<PaymentListResponse> => {
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
-  const skip = (page - 1) * limit;
 
   const month = query.month ? Number(query.month) : null;
   const year = query.year ? Number(query.year) : null;
 
-  const sortOrder = query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+  const sortOrder =
+    query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
-  const qb = getPaymentsQueryBuilder();
-
-  if (month && year) {
-    qb.andWhere("EXTRACT(MONTH FROM payment.paymentDate) = :month", {
-      month,
-    }).andWhere("EXTRACT(YEAR FROM payment.paymentDate) = :year", { year });
-  }
-
-  if (query.name)
-    qb.andWhere("donor.name ILIKE :name", { name: `%${query.name}%` });
-  if (query.regNum)
-    qb.andWhere("donor.regNum = :regNum", { regNum: query.regNum });
-
-  const allowedSortFields: Record<string, string> = {
-    amount: "payment.amount",
-    paymentDate: "payment.paymentDate",
-    monthYear: "payment.monthYear",
-    status: "payment.status",
-    mode: "payment.mode",
-    name: "donor.name",
-    regNum: "donor.regNum",
-    projectName: "project.templeName",
-  };
-  const sortField =
-    allowedSortFields[query.sortBy as string] || "payment.paymentDate";
-  qb.orderBy(sortField, sortOrder as "ASC" | "DESC");
-
-  qb.skip(skip).take(limit);
-
-  const [payments, totalRecords] = await qb.getManyAndCount();
+  const [payments, totalRecords] = await getPaymentsWithFilters({
+    page,
+    limit,
+    month,
+    year,
+    name: query.name,
+    regNum: query.regNum,
+    sortBy: query.sortBy,
+    sortOrder,
+  });
 
   const formattedPayments: PaymentListItem[] = payments.map((payment) => ({
     donorId: payment.donor.regNum,
@@ -107,7 +91,8 @@ export const getPaymentsService = async (
     status: payment.status,
     paymentMode: payment.mode,
     monthYear: payment.monthYear,
-    projectName: payment.projectSubscription?.project?.templeName ?? null,
+    projectName:
+      payment.projectSubscription?.project?.templeName ?? null,
   }));
 
   return {
@@ -129,37 +114,11 @@ export const getPaymentSummaryService = async (query: {
   month: number | string;
   year: number | string;
 }): Promise<PaymentSummaryResponse> => {
+
   const month = Number(query.month);
   const year = Number(query.year);
 
-  const qb = getPaymentSummaryQueryBuilder();
-  if (month && year) {
-    qb.andWhere("EXTRACT(MONTH FROM payment.paymentDate) = :month", {
-      month,
-    }).andWhere("EXTRACT(YEAR FROM payment.paymentDate) = :year", { year });
-  }
-
-  const result = await qb
-    .select([
-      `SUM(CASE WHEN payment.mode = '${PaymentMode.ONLINE}' THEN payment.amount ELSE 0 END) as online_amount`,
-      `COUNT(CASE WHEN payment.mode = '${PaymentMode.ONLINE}' THEN 1 END) as online_count`,
-      `SUM(CASE WHEN payment.mode = '${PaymentMode.PAID_TO_REP}' THEN payment.amount ELSE 0 END) as offline_amount`,
-      `COUNT(CASE WHEN payment.mode = '${PaymentMode.PAID_TO_REP}' THEN 1 END) as offline_count`,
-      `SUM(CASE WHEN payment.status = '${PaymentStatus.PENDING_WITH_REP}' THEN payment.amount ELSE 0 END) as pending_amount`,
-      `COUNT(CASE WHEN payment.status = '${PaymentStatus.PENDING_WITH_REP}' THEN 1 END) as pending_count`,
-      `SUM(CASE WHEN payment.status = '${PaymentStatus.NOT_PAID}' THEN payment.amount ELSE 0 END) as not_paid_amount`,
-      `COUNT(CASE WHEN payment.status = '${PaymentStatus.NOT_PAID}' THEN 1 END) as not_paid_count`,
-    ])
-    .getRawOne<{
-      online_amount: string;
-      online_count: string;
-      offline_amount: string;
-      offline_count: string;
-      pending_amount: string;
-      pending_count: string;
-      not_paid_amount: string;
-      not_paid_count: string;
-    }>();
+  const result = await getPaymentSummary({ month, year });
 
   const safeResult = result ?? {
     online_amount: "0",
@@ -192,10 +151,12 @@ export const getPaymentSummaryService = async (query: {
   };
 };
 
+
 export const getDonorPaymentsService = async (
   donorId: string,
-  query: PaginationQuery,
+  query: PaginationQuery
 ): Promise<DonorPaymentResponse> => {
+
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -217,54 +178,43 @@ export const getDonorPaymentsService = async (
     type: "type",
   };
 
-  const sortField = allowedSortFields[sortBy as string] || "date";
+  const sortField = allowedSortFields[sortBy] || "date";
 
-  const paymentQB = getDonorPaymentsQueryBuilder();
-  paymentQB.where("donor.regNum = :donorId", { donorId });
+  
+  const subscriptionPayments = await getDonorSubscriptionPayments({
+    donorId,
+    month,
+    year,
+  });
 
-  if (month && year) {
-    paymentQB
-      .andWhere("EXTRACT(MONTH FROM payment.paymentDate) = :month", { month })
-      .andWhere("EXTRACT(YEAR FROM payment.paymentDate) = :year", { year });
-  }
+  const oneTimeDonations = await getDonorOneTimeDonations({
+    donorId,
+    month,
+    year,
+  });
 
-  const subscriptionPayments = await paymentQB.getMany();
-
-  const donationQB = getDonorOneTimeDonationsQueryBuilder();
-  donationQB.where("donor.regNum = :donorId", { donorId });
-
-  if (month && year) {
-    donationQB
-      .andWhere("EXTRACT(MONTH FROM donation.donationDate) = :month", { month })
-      .andWhere("EXTRACT(YEAR FROM donation.donationDate) = :year", { year });
-  }
-
-  const oneTimeDonations = await donationQB.getMany();
-
-  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map(
-    (p) => ({
+  
+  const subscriptionResults: DonorPaymentItem[] =
+    subscriptionPayments.map((p) => ({
       date: p.paymentDate,
       paymentMode: p.mode,
       transactionId: p.transactionId ?? null,
       repName: p.donor.rep?.name ?? null,
       repRegisterNumber: p.donor.rep?.regNum ?? null,
       type: "SUBSCRIPTION",
-    }),
-  );
+    }));
 
-  const oneTimeResults: DonorPaymentItem[] = oneTimeDonations.map((d) => ({
-    date: d.donationDate,
-    paymentMode: d.paymentMode,
-    transactionId: d.transactionId ?? null,
-    repName: null,
-    repRegisterNumber: null,
-    type: "ONE_TIME",
-  }));
+  const oneTimeResults: DonorPaymentItem[] =
+    oneTimeDonations.map((d) => ({
+      date: d.donationDate,
+      paymentMode: d.paymentMode,
+      transactionId: d.transactionId ?? null,
+      repName: null,
+      repRegisterNumber: null,
+      type: "ONE_TIME",
+    }));
 
-  const merged: DonorPaymentItem[] = [
-    ...subscriptionResults,
-    ...oneTimeResults,
-  ];
+  const merged = [...subscriptionResults, ...oneTimeResults];
 
   merged.sort((a, b) => {
     const valueA = a[sortField];
@@ -276,19 +226,14 @@ export const getDonorPaymentsService = async (
     if (sortField === "date") {
       const timeA = new Date(valueA as Date).getTime();
       const timeB = new Date(valueB as Date).getTime();
-
       return sortOrder === "ASC" ? timeA - timeB : timeB - timeA;
     }
 
     const stringA = String(valueA).toLowerCase();
     const stringB = String(valueB).toLowerCase();
 
-    if (stringA < stringB) {
-      return sortOrder === "ASC" ? -1 : 1;
-    }
-    if (stringA > stringB) {
-      return sortOrder === "ASC" ? 1 : -1;
-    }
+    if (stringA < stringB) return sortOrder === "ASC" ? -1 : 1;
+    if (stringA > stringB) return sortOrder === "ASC" ? 1 : -1;
 
     return 0;
   });
