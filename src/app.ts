@@ -1,6 +1,6 @@
 import express from 'express';
-import paymentController from './controllers/PaymentController'
-import projectDonationController from './controllers/projectDonationController'
+import paymentController from './controllers/payment.controller'
+import projectDonationController from './controllers/projectDonation.controller'
 import donorController from './controllers/donor.controller'
 const app = express();
 

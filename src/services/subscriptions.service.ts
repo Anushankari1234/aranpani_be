@@ -1,5 +1,5 @@
 import { findDonorByRegNum } from "../repositories/donor.repo";
-import { findSubscriptionByDonorId } from "../repositories/subscription.repo.js";
+import { findSubscriptionByDonorId } from "../repositories/subscription.repo";
 
 export const getSubscriptionId = async (regNum: string): Promise<number> => {
   const donor = await findDonorByRegNum(regNum);
