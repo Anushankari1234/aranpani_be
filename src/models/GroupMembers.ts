@@ -1,21 +1,15 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Donor } from './Donor';
 
 @Entity('group_members')
 export class GroupMember {
   @PrimaryGeneratedColumn('increment')
-  id!: number;
+  id: number;
 
-  @ManyToOne(() => Donor, donor => donor.groupMembers)
-  @JoinColumn({ name: 'group_donor_id', referencedColumnName: 'regNum' })
-  groupDonor!: Donor;
+  @ManyToOne(() => Donor, (donor) => donor.groupMembers)
+  @JoinColumn({ name: 'group_donor_id', referencedColumnName: 'id' })
+  groupDonor: Donor;
 
-  @Column()
-  memberName!: string;
+  @Column({ type: 'varchar', length: 150 })
+  memberName: string;
 }

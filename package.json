@@ -15,10 +15,12 @@
     "migration:run": "npm run typeorm -- migration:run -d src/data-source.ts",
     "migration:revert": "npm run typeorm -- migration:revert -d src/data-source.ts",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "format": "prettier --write ."
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "prettier": "^3.8.1",
     "typescript": "^5.9.3"
   },
   "dependencies": {

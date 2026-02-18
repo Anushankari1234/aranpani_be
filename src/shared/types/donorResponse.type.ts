@@ -1,4 +1,4 @@
-import { DonorPaymentItem } from "./donorPayment.type";
+import { DonorPaymentItem } from './donorPayment.type';
 
 export interface DonorPaymentResponse {
   results: DonorPaymentItem[];

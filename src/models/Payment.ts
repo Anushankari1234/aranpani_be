@@ -1,11 +1,5 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  ManyToOne,
-  JoinColumn
-} from 'typeorm';
-import { PaymentMode} from '../enums/paymentMode';
+import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { PaymentMode } from '../enums/paymentMode';
 import { PaymentStatus } from '../enums/paymentStatus';
 import { Donor } from './Donor';
 import { ProjectSubscription } from './ProjectSubscription';
@@ -13,45 +7,45 @@ import { ProjectSubscription } from './ProjectSubscription';
 @Entity('payments')
 export class Payment {
   @PrimaryGeneratedColumn('increment')
-  id!: number;
+  id: number;
 
   @Column({ type: 'date' })
-  paymentDate!: Date;
+  paymentDate: Date;
 
   @Column({
     type: 'enum',
-    enum: PaymentMode
+    enum: PaymentMode,
   })
-  mode!: PaymentMode;
+  mode: PaymentMode;
 
-  @Column({ nullable: false })
-  transactionId!: string;
+  @Column({ type: 'varchar', length: 150 })
+  transactionId: string;
 
-  @Column({ type: 'json', nullable: false })
-donationScript!: string[];
+  @Column({ type: 'json' })
+  donationScript: string[];
 
+  @ManyToOne(() => Donor, (donor) => donor.payments)
+  @JoinColumn({ name: 'donor_id', referencedColumnName: 'id' })
+  donor: Donor;
 
-
-  @ManyToOne(() => Donor, donor => donor.payments)
-  @JoinColumn({ name: 'donor_id', referencedColumnName: 'regNum' })
-  donor!: Donor;
-
-  @ManyToOne(() => ProjectSubscription, ps => ps.payments)
-  @JoinColumn({ name: 'project_subscription_id' })
-  projectSubscription!: ProjectSubscription;
-
-  @Column('decimal')
-  amount!: number;
+  @ManyToOne(() => ProjectSubscription, (ps) => ps.payments)
+  @JoinColumn({ name: 'project_subscription_id', referencedColumnName: 'id' })
+  projectSubscription: ProjectSubscription;
 
   @Column({
-  type: 'enum',
-  enum: PaymentStatus,
-  default: PaymentStatus.PAID
-})
-status!: PaymentStatus;
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+  })
+  amount: number;
 
+  @Column({
+    type: 'enum',
+    enum: PaymentStatus,
+    default: PaymentStatus.PAID,
+  })
+  status: PaymentStatus;
 
-  @Column()
-  monthYear!: string;
-
+  @Column({ type: 'varchar', length: 7 })
+  monthYear: string;
 }

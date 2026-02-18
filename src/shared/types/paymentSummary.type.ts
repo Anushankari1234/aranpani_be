@@ -9,4 +9,3 @@ export interface PaymentSummaryResponse {
   pendingWithRep: PaymentSummaryItem;
   notPaid: PaymentSummaryItem;
 }
-

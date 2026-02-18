@@ -1,29 +1,24 @@
-import {
-  createProjectDonation,
-  saveProjectDonation,
-} from "../repositories/projectDonation.repo";
-import { findProjectByRegnum } from "../repositories/project.repo";
+import { createProjectDonation, saveProjectDonation } from '../repositories/projectDonation.repo';
+import { findProjectByRegnum } from '../repositories/project.repo';
 import {
   findDonorByPhoneNum,
   createDonor,
   saveDonor,
   findLastDonor,
-} from "../repositories/donor.repo";
-import { CreateProjectDonationDTO } from "../validations/projectDonationSchema";
-import { UserType } from "../enums/userType";
-export const createProjectDonationService = async (
-  payload: CreateProjectDonationDTO,
-) => {
+} from '../repositories/donor.repo';
+import { CreateProjectDonationDTO } from '../validations/projectDonationSchema';
+import { UserType } from '../enums/userType';
+export const createProjectDonationService = async (payload: CreateProjectDonationDTO) => {
   const project = await findProjectByRegnum(payload.projectId);
-  if (!project) throw new Error("Project not found");
+  if (!project) throw new Error('Project not found');
 
   let donor = await findDonorByPhoneNum(payload.phoneNumber);
   const lastDonor = await findLastDonor();
   const lastNum = lastDonor ? parseInt(lastDonor.regNum.slice(1)) : 0;
-  const newRegNum = `D${String(lastNum + 1).padStart(3, "0")}`;
+  const newRegNum = `D${String(lastNum + 1).padStart(3, '0')}`;
 
   if (!donor) {
-    donor = createDonor({
+    donor = await createDonor({
       regNum: newRegNum,
       name: payload.donorName,
       phoneNumber: payload.phoneNumber,
@@ -50,9 +45,9 @@ export const createProjectDonationService = async (
     donationDate: new Date(),
   });
 
-  await saveProjectDonation(donation);
+  await saveProjectDonation(await donation);
 
   return {
-    message: "One-time donation successful",
+    message: 'One-time donation successful',
   };
 };

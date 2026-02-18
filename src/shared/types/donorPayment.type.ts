@@ -1,4 +1,4 @@
-import { PaymentMode } from "../../enums/paymentMode";
+import { PaymentMode } from '../../enums/paymentMode';
 
 export type DonorPaymentItem = {
   date: Date;
@@ -6,5 +6,11 @@ export type DonorPaymentItem = {
   transactionId: string | null;
   repName: string | null;
   repRegisterNumber: string | null;
-  type: "SUBSCRIPTION" | "ONE_TIME";
+  type: 'SUBSCRIPTION' | 'ONE_TIME';
 };
+
+export interface GetDonorOneTimeDonationsParams {
+  donorId: string;
+  month?: number | null;
+  year?: number | null;
+}

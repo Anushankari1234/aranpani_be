@@ -1,33 +1,32 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  OneToMany
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { SubscriptionScheme } from '../enums/subscriptionScheme';
 import { ProjectSubscription } from './ProjectSubscription';
 
 @Entity('subscription_plans')
 export class SubscriptionPlan {
   @PrimaryGeneratedColumn('increment')
-  id!: number;
+  id: number;
 
   @Column({
     type: 'enum',
     enum: SubscriptionScheme,
-    unique: true
+    unique: true,
   })
-  scheme!: SubscriptionScheme;
+  scheme: SubscriptionScheme;
 
-  @Column('decimal')
-  amountPerPerson!: number;
+  @Column({
+    type: 'decimal',
+    precision: 12,
+    scale: 2,
+  })
+  amountPerPerson: number;
 
-  @Column()
-  periodInMonths!: number;
+  @Column({ type: 'int' })
+  periodInMonths: number;
 
-  @Column({ default: 0 })
-  totalSubscribers!: number;
+  @Column({ type: 'int', default: 0 })
+  totalSubscribers: number;
 
-  @OneToMany(() => ProjectSubscription, ps => ps.plan)
-  projectSubscriptions!: ProjectSubscription[];
+  @OneToMany(() => ProjectSubscription, (ps) => ps.plan)
+  projectSubscriptions: ProjectSubscription[];
 }

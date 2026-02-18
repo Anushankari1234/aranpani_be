@@ -1,16 +1,17 @@
-import { AppDataSource } from "../data-source";
-import { ProjectSubscription } from "../models/ProjectSubscription";
+import { AppDataSource } from '../data-source';
+import { ProjectSubscription } from '../models/ProjectSubscription';
 
 const subscriptionRepo = AppDataSource.getRepository(ProjectSubscription);
 
-export const findSubscriptionById = (id: number) => {
-  return subscriptionRepo.findOneBy({ id });
+export const findSubscriptionById = async (id: number): Promise<ProjectSubscription | null> => {
+  return await subscriptionRepo.findOneBy({ id });
 };
 
-export const findSubscriptionByDonorId = (regNum: string) => {
-  return subscriptionRepo.findOne({
+export const findSubscriptionByDonorId = async (
+  regNum: string,
+): Promise<ProjectSubscription | null> => {
+  return await subscriptionRepo.findOne({
     where: { donor: { regNum } },
-    relations: ["donor"], 
+    relations: ['donor'],
   });
 };
-

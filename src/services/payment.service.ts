@@ -1,6 +1,5 @@
-import { PaymentStatus } from "../enums/paymentStatus";
-import { PaymentMode } from "../enums/paymentMode";
-
+import { PaymentStatus } from '../enums/paymentStatus';
+import { PaymentMode } from '../enums/paymentMode';
 import {
   createPaymentEntity,
   savePayment,
@@ -8,30 +7,28 @@ import {
   getPaymentSummary,
   getDonorSubscriptionPayments,
   findPaymentBySubscriptionAndMonth,
-} from "../repositories/payment.repo";
-import { CreatePaymentDTO } from "../validations/paymentSchema";
-import {
-  findDonorByRegNum,
-  getDonorOneTimeDonations,
-} from "../repositories/donor.repo";
-import { findSubscriptionById } from "../repositories/subscription.repo";
-import { PaginationQuery } from "../shared/types/pagination.type";
-import { PaymentListResponse } from "../shared/types/paymentResponse.type";
-import { PaymentListItem } from "../shared/types/paymentItem.type";
-import { PaymentSummaryResponse } from "../shared/types/paymentSummary.type";
-import { DonorPaymentResponse } from "../shared/types/donorResponse.type";
-import { DonorPaymentItem } from "../shared/types/donorPayment.type";
+} from '../repositories/payment.repo';
+import { CreatePaymentDTO } from '../validations/paymentSchema';
+import { findDonorByRegNum, getDonorOneTimeDonations } from '../repositories/donor.repo';
+import { findSubscriptionById } from '../repositories/subscription.repo';
+import { PaginationQuery } from '../shared/types/pagination.type';
+import { PaymentListResponse } from '../shared/types/paymentResponse.type';
+import { PaymentListItem } from '../shared/types/paymentItem.type';
+import { PaymentSummaryResponse } from '../shared/types/paymentSummary.type';
+import { DonorPaymentResponse } from '../shared/types/donorResponse.type';
+import { DonorPaymentItem } from '../shared/types/donorPayment.type';
+import { ErrorMessages } from '../enums/errors.enum';
 
 export const createPaymentService = async (body: CreatePaymentDTO) => {
   const donor = await findDonorByRegNum(body.donorId);
   if (!donor) {
-    throw new Error("Donor not found");
+    throw new Error(ErrorMessages.DONOR_NOT_FOUND);
   }
 
   const subscription = await findSubscriptionById(body.projectSubscriptionId);
 
   if (!subscription) {
-    throw new Error("Project Subscription not found");
+    throw new Error(ErrorMessages.PROJECT_SUBSCRIPTION_NOT_FOUND);
   }
 
   const monthYear = body.paymentDate.substring(0, 7);
@@ -43,18 +40,16 @@ export const createPaymentService = async (body: CreatePaymentDTO) => {
   });
 
   if (existingPayment) {
-    throw new Error("Payment already exists for this month");
+    throw new Error(ErrorMessages.PAYMENT_ALREADY_EXISTS);
   }
 
   let donationArray: string[] = [];
 
   if (body.donationScript) {
-    donationArray = body.donationScript
-      .split(",")
-      .map((name: string) => name.trim());
+    donationArray = body.donationScript.split(',').map((name: string) => name.trim());
   }
 
-  const payment = createPaymentEntity({
+  const payment = await createPaymentEntity({
     donor,
     projectSubscription: subscription,
     paymentDate: new Date(body.paymentDate),
@@ -63,22 +58,20 @@ export const createPaymentService = async (body: CreatePaymentDTO) => {
     transactionId: body.transactionId,
     donationScript: donationArray,
     status: PaymentStatus.PAID,
-    monthYear: body.paymentDate.substring(0, 7),
+    monthYear,
   });
 
-  return await savePayment(payment);
+  return savePayment(payment);
 };
 
-export const getPaymentsService = async (
-  query: PaginationQuery,
-): Promise<PaymentListResponse> => {
+export const getPaymentsService = async (query: PaginationQuery): Promise<PaymentListResponse> => {
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
 
   const month = query.month ? Number(query.month) : null;
   const year = query.year ? Number(query.year) : null;
 
-  const sortOrder = query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+  const sortOrder = query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
   const [payments, totalRecords] = await getPaymentsWithFilters({
     page,
@@ -95,7 +88,7 @@ export const getPaymentsService = async (
     donorId: payment.donor.regNum,
     name: payment.donor.name,
     regNum: payment.donor.regNum,
-    amount: Number(payment.amount),
+    amount: payment.amount,
     status: payment.status,
     paymentMode: payment.mode,
     monthYear: payment.monthYear,
@@ -109,7 +102,7 @@ export const getPaymentsService = async (
       limit,
       totalRecords,
       totalPages: Math.ceil(totalRecords / limit),
-      sortBy: query.sortBy || "paymentDate",
+      sortBy: query.sortBy || 'paymentDate',
       sortOrder,
       month,
       year,
@@ -126,33 +119,22 @@ export const getPaymentSummaryService = async (query: {
 
   const result = await getPaymentSummary({ month, year });
 
-  const safeResult = result ?? {
-    online_amount: "0",
-    online_count: "0",
-    offline_amount: "0",
-    offline_count: "0",
-    pending_amount: "0",
-    pending_count: "0",
-    not_paid_amount: "0",
-    not_paid_count: "0",
-  };
-
   return {
     online: {
-      count: Number(safeResult.online_count),
-      amount: Number(safeResult.online_amount),
+      count: Number(result.online_count),
+      amount: Number(result.online_amount),
     },
     offline: {
-      count: Number(safeResult.offline_count),
-      amount: Number(safeResult.offline_amount),
+      count: Number(result.offline_count),
+      amount: Number(result.offline_amount),
     },
     pendingWithRep: {
-      count: Number(safeResult.pending_count),
-      amount: Number(safeResult.pending_amount),
+      count: Number(result.pending_count),
+      amount: Number(result.pending_amount),
     },
     notPaid: {
-      count: Number(safeResult.not_paid_count),
-      amount: Number(safeResult.not_paid_amount),
+      count: Number(result.not_paid_count),
+      amount: Number(result.not_paid_amount),
     },
   };
 };
@@ -168,21 +150,20 @@ export const getDonorPaymentsService = async (
   const month = query.month ? Number(query.month) : null;
   const year = query.year ? Number(query.year) : null;
 
-  const sortOrder: "ASC" | "DESC" =
-    query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+  const sortOrder: 'ASC' | 'DESC' = query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
 
-  const sortBy = query.sortBy || "date";
+  const sortBy = query.sortBy || 'date';
 
   const allowedSortFields: Record<string, keyof DonorPaymentItem> = {
-    date: "date",
-    paymentMode: "paymentMode",
-    transactionId: "transactionId",
-    repName: "repName",
-    repRegisterNumber: "repRegisterNumber",
-    type: "type",
+    date: 'date',
+    paymentMode: 'paymentMode',
+    transactionId: 'transactionId',
+    repName: 'repName',
+    repRegisterNumber: 'repRegisterNumber',
+    type: 'type',
   };
 
-  const sortField = allowedSortFields[sortBy] || "date";
+  const sortField = allowedSortFields[sortBy] || 'date';
 
   const subscriptionPayments = await getDonorSubscriptionPayments({
     donorId,
@@ -196,16 +177,14 @@ export const getDonorPaymentsService = async (
     year,
   });
 
-  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map(
-    (p) => ({
-      date: p.paymentDate,
-      paymentMode: p.mode,
-      transactionId: p.transactionId ?? null,
-      repName: p.donor.rep?.name ?? null,
-      repRegisterNumber: p.donor.rep?.regNum ?? null,
-      type: "SUBSCRIPTION",
-    }),
-  );
+  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map((p) => ({
+    date: p.paymentDate,
+    paymentMode: p.mode,
+    transactionId: p.transactionId ?? null,
+    repName: p.donor.rep?.name ?? null,
+    repRegisterNumber: p.donor.rep?.regNum ?? null,
+    type: 'SUBSCRIPTION',
+  }));
 
   const oneTimeResults: DonorPaymentItem[] = oneTimeDonations.map((d) => ({
     date: d.donationDate,
@@ -213,7 +192,7 @@ export const getDonorPaymentsService = async (
     transactionId: d.transactionId ?? null,
     repName: null,
     repRegisterNumber: null,
-    type: "ONE_TIME",
+    type: 'ONE_TIME',
   }));
 
   const merged = [...subscriptionResults, ...oneTimeResults];
@@ -225,17 +204,17 @@ export const getDonorPaymentsService = async (
     if (valueA == null) return 1;
     if (valueB == null) return -1;
 
-    if (sortField === "date") {
+    if (sortField === 'date') {
       const timeA = new Date(valueA as Date).getTime();
       const timeB = new Date(valueB as Date).getTime();
-      return sortOrder === "ASC" ? timeA - timeB : timeB - timeA;
+      return sortOrder === 'ASC' ? timeA - timeB : timeB - timeA;
     }
 
     const stringA = String(valueA).toLowerCase();
     const stringB = String(valueB).toLowerCase();
 
-    if (stringA < stringB) return sortOrder === "ASC" ? -1 : 1;
-    if (stringA > stringB) return sortOrder === "ASC" ? 1 : -1;
+    if (stringA < stringB) return sortOrder === 'ASC' ? -1 : 1;
+    if (stringA > stringB) return sortOrder === 'ASC' ? 1 : -1;
 
     return 0;
   });

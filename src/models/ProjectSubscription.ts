@@ -5,7 +5,7 @@ import {
   ManyToOne,
   OneToMany,
   OneToOne,
-  JoinColumn
+  JoinColumn,
 } from 'typeorm';
 import { Donor } from './Donor';
 import { Project } from './Project';
@@ -15,26 +15,26 @@ import { Payment } from './Payment';
 @Entity('project_subscriptions')
 export class ProjectSubscription {
   @PrimaryGeneratedColumn('increment')
-  id!: number;
+  id: number;
 
-  @OneToOne(() => Donor, donor => donor.projectSubscription)
-  @JoinColumn({ name: 'donor_id', referencedColumnName: 'regNum' })
-  donor!: Donor;
+  @OneToOne(() => Donor, (donor) => donor.projectSubscription)
+  @JoinColumn({ name: 'donor_id', referencedColumnName: 'id' })
+  donor: Donor;
 
-  @ManyToOne(() => Project, project => project.subscriptions)
-  @JoinColumn({ name: 'project_id', referencedColumnName: 'regNum' })
-  project!: Project;
+  @ManyToOne(() => Project, (project) => project.subscriptions)
+  @JoinColumn({ name: 'project_id', referencedColumnName: 'id' })
+  project: Project;
 
-  @ManyToOne(() => SubscriptionPlan, plan => plan.projectSubscriptions)
-  @JoinColumn({ name: 'plan_id' })
-  plan!: SubscriptionPlan;
+  @ManyToOne(() => SubscriptionPlan, (plan) => plan.projectSubscriptions)
+  @JoinColumn({ name: 'plan_id', referencedColumnName: 'id' })
+  plan: SubscriptionPlan;
 
   @Column({ type: 'date' })
-  startDate!: Date;
+  startDate: Date;
 
-  @Column({ default: 'active' })
-  status!: string;
+  @Column({ type: 'varchar', length: 50, default: 'active' })
+  status: string;
 
-  @OneToMany(() => Payment, payment => payment.projectSubscription)
-  payments!: Payment[];
+  @OneToMany(() => Payment, (payment) => payment.projectSubscription)
+  payments: Payment[];
 }

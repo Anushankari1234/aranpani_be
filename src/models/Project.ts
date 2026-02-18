@@ -1,57 +1,64 @@
-import {
-  Entity,
-  Column,
-  PrimaryColumn,
-  OneToMany
-} from 'typeorm';
+import { Entity, Column, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { ProjectStatus } from '../enums/ProjectStatus';
 import { ProjectSubscription } from './ProjectSubscription';
 import { ProjectDonation } from './ProjectDonation';
-
 @Entity('projects')
 export class Project {
-  @PrimaryColumn()
-  regNum!: string;
+  @PrimaryGeneratedColumn('increment')
+  id: number;
 
-  @Column()
-  templeName!: string;
+  @Column({ type: 'varchar', length: 50, unique: true })
+  regNum: string;
 
-  @Column({ nullable: true })
-  inchargeName?: string;
+  @Column({ type: 'varchar', length: 150 })
+  templeName: string;
+
+  @Column({ type: 'varchar', length: 150 })
+  inchargeName: string;
 
   @Column({
     type: 'enum',
-    enum: ProjectStatus
+    enum: ProjectStatus,
   })
-  status!: ProjectStatus;
+  status: ProjectStatus;
 
-  @Column('text', { nullable: true })
-  location?: string;
+  @Column({ type: 'text' })
+  location: string;
 
-  @Column({ nullable: true })
-  contactNumber?: string;
-
-  @Column({ type: 'date', nullable: true })
-  planStartDate?: Date;
+  @Column({ type: 'varchar', length: 20 })
+  contactNumber: string;
 
   @Column({ type: 'date', nullable: true })
-  planEndDate?: Date;
+  planStartDate: Date;
 
-  @Column('decimal', { nullable: true })
-  estimatedAmount?: number;
+  @Column({ type: 'date', nullable: true })
+  planEndDate: Date;
 
-  @Column('decimal', { default: 0 })
-  expensedAmount!: number;
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    nullable: true,
+  })
+  estimatedAmount: number;
 
-  @Column({ nullable: true })
-  completionPercent?: number;
+  @Column({
+    type: 'decimal',
+    precision: 14,
+    scale: 2,
+    default: 0,
+  })
+  expensedAmount: number;
 
-  @Column('text', { nullable: true })
-  scrapReason?: string;
+  @Column({ type: 'int', nullable: true })
+  completionPercent: number;
 
-  @OneToMany(() => ProjectSubscription, ps => ps.project)
-  subscriptions!: ProjectSubscription[];
+  @Column({ type: 'text', nullable: true })
+  scrapReason: string;
 
-  @OneToMany(() => ProjectDonation, donation => donation.project)
-  donations!: ProjectDonation[];
+  @OneToMany(() => ProjectSubscription, (ps) => ps.project)
+  subscriptions: ProjectSubscription[];
+
+  @OneToMany(() => ProjectDonation, (donation) => donation.project)
+  donations: ProjectDonation[];
 }
