@@ -1,6 +1,5 @@
 import { AppDataSource } from "../data-source";
 import { Payment } from "../models/Payment";
-import { SelectQueryBuilder } from "typeorm";
 import { PaymentMode } from "../enums/paymentMode";
 import { PaymentStatus } from "../enums/paymentStatus";
 
@@ -37,6 +36,24 @@ export const getDonorPaymentsQueryBuilder = () =>
     .leftJoinAndSelect("donor.rep", "rep");
 
 
+export const findPaymentBySubscriptionAndMonth = async ({
+  donorId,
+  subscriptionId,
+  monthYear,
+}: {
+  donorId: string;
+  subscriptionId: number;
+  monthYear: string;
+}) => {
+  return await AppDataSource.getRepository(Payment)
+    .createQueryBuilder("payment")
+    .leftJoin("payment.donor", "donor")
+    .leftJoin("payment.projectSubscription", "subscription")
+    .where("donor.regNum = :donorId", { donorId })
+    .andWhere("subscription.id = :subscriptionId", { subscriptionId })
+    .andWhere("payment.monthYear = :monthYear", { monthYear })
+    .getOne();
+};
 
 interface GetPaymentsRepoParams {
   page: number;

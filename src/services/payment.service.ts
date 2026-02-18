@@ -4,18 +4,15 @@ import { PaymentMode } from "../enums/paymentMode";
 import {
   createPaymentEntity,
   savePayment,
-  getPaymentsQueryBuilder,
-  getPaymentSummaryQueryBuilder,
-  getDonorPaymentsQueryBuilder,
   getPaymentsWithFilters,
   getPaymentSummary,
   getDonorSubscriptionPayments,
+  findPaymentBySubscriptionAndMonth,
 } from "../repositories/payment.repo";
 import { CreatePaymentDTO } from "../validations/paymentSchema";
 import {
   findDonorByRegNum,
   getDonorOneTimeDonations,
-  getDonorOneTimeDonationsQueryBuilder,
 } from "../repositories/donor.repo";
 import { findSubscriptionById } from "../repositories/subscription.repo";
 import { PaginationQuery } from "../shared/types/pagination.type";
@@ -35,6 +32,18 @@ export const createPaymentService = async (body: CreatePaymentDTO) => {
 
   if (!subscription) {
     throw new Error("Project Subscription not found");
+  }
+
+  const monthYear = body.paymentDate.substring(0, 7);
+
+  const existingPayment = await findPaymentBySubscriptionAndMonth({
+    donorId: body.donorId,
+    subscriptionId: body.projectSubscriptionId,
+    monthYear,
+  });
+
+  if (existingPayment) {
+    throw new Error("Payment already exists for this month");
   }
 
   let donationArray: string[] = [];
@@ -61,7 +70,7 @@ export const createPaymentService = async (body: CreatePaymentDTO) => {
 };
 
 export const getPaymentsService = async (
-  query: PaginationQuery
+  query: PaginationQuery,
 ): Promise<PaymentListResponse> => {
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
@@ -69,8 +78,7 @@ export const getPaymentsService = async (
   const month = query.month ? Number(query.month) : null;
   const year = query.year ? Number(query.year) : null;
 
-  const sortOrder =
-    query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
+  const sortOrder = query.sortOrder?.toUpperCase() === "DESC" ? "DESC" : "ASC";
 
   const [payments, totalRecords] = await getPaymentsWithFilters({
     page,
@@ -91,8 +99,7 @@ export const getPaymentsService = async (
     status: payment.status,
     paymentMode: payment.mode,
     monthYear: payment.monthYear,
-    projectName:
-      payment.projectSubscription?.project?.templeName ?? null,
+    projectName: payment.projectSubscription?.project?.templeName ?? null,
   }));
 
   return {
@@ -114,7 +121,6 @@ export const getPaymentSummaryService = async (query: {
   month: number | string;
   year: number | string;
 }): Promise<PaymentSummaryResponse> => {
-
   const month = Number(query.month);
   const year = Number(query.year);
 
@@ -151,12 +157,10 @@ export const getPaymentSummaryService = async (query: {
   };
 };
 
-
 export const getDonorPaymentsService = async (
   donorId: string,
-  query: PaginationQuery
+  query: PaginationQuery,
 ): Promise<DonorPaymentResponse> => {
-
   const page = Number(query.page) || 1;
   const limit = Number(query.limit) || 10;
   const skip = (page - 1) * limit;
@@ -180,7 +184,6 @@ export const getDonorPaymentsService = async (
 
   const sortField = allowedSortFields[sortBy] || "date";
 
-  
   const subscriptionPayments = await getDonorSubscriptionPayments({
     donorId,
     month,
@@ -193,26 +196,25 @@ export const getDonorPaymentsService = async (
     year,
   });
 
-  
-  const subscriptionResults: DonorPaymentItem[] =
-    subscriptionPayments.map((p) => ({
+  const subscriptionResults: DonorPaymentItem[] = subscriptionPayments.map(
+    (p) => ({
       date: p.paymentDate,
       paymentMode: p.mode,
       transactionId: p.transactionId ?? null,
       repName: p.donor.rep?.name ?? null,
       repRegisterNumber: p.donor.rep?.regNum ?? null,
       type: "SUBSCRIPTION",
-    }));
+    }),
+  );
 
-  const oneTimeResults: DonorPaymentItem[] =
-    oneTimeDonations.map((d) => ({
-      date: d.donationDate,
-      paymentMode: d.paymentMode,
-      transactionId: d.transactionId ?? null,
-      repName: null,
-      repRegisterNumber: null,
-      type: "ONE_TIME",
-    }));
+  const oneTimeResults: DonorPaymentItem[] = oneTimeDonations.map((d) => ({
+    date: d.donationDate,
+    paymentMode: d.paymentMode,
+    transactionId: d.transactionId ?? null,
+    repName: null,
+    repRegisterNumber: null,
+    type: "ONE_TIME",
+  }));
 
   const merged = [...subscriptionResults, ...oneTimeResults];
 
