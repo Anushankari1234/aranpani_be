@@ -1,1 +1,10 @@
 node_modules/
+
+dist/
+.env
+
+core
+core.*
+*.heapsnapshot
+report.*.json
+isolate-*.log
