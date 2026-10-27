@@ -24,8 +24,12 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "dotenv": "^18.0.9",
     "express": "^5.2.1",
     "nodemon": "^3.1.11",
+    "pg": "^8.23.1",
+    "reflect-metadata": "^0.2.2",
+    "typeorm": "^0.3.31",
     "zod": "^4.3.6"
   }
 }
